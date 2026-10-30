@@ -156,8 +156,8 @@ export const IssueTable: React.FC<IssueTableProps> = ({
 
       {/* Issues Table */}
       <div className="rounded-xl border border-slate-800/80 bg-[#0e111a] overflow-hidden shadow">
-        <div className="grid grid-cols-12 gap-4 px-4 py-3 border-b border-slate-800 bg-[#0a0c13] text-[11px] font-bold uppercase tracking-wider text-slate-400">
-          <div className="col-span-6 flex items-center gap-3">
+        <div className="grid grid-cols-12 gap-3 px-4 py-3 border-b border-slate-800 bg-[#0a0c13] text-[11px] font-bold uppercase tracking-wider text-slate-400">
+          <div className="col-span-8 md:col-span-6 flex items-center gap-3">
             <input
               type="checkbox"
               checked={issues.length > 0 && selectedCount === issues.length}
@@ -166,12 +166,12 @@ export const IssueTable: React.FC<IssueTableProps> = ({
             />
             <span>Issue & Culprit</span>
           </div>
-          <div className="col-span-2 flex items-center gap-1">
+          <div className="hidden md:flex md:col-span-2 items-center gap-1">
             <ArrowUpDown className="w-3 h-3 text-slate-500" />
             <span>Activity (24h)</span>
           </div>
-          <div className="col-span-1 text-right">Events</div>
-          <div className="col-span-1 text-right">Users</div>
+          <div className="col-span-2 md:col-span-1 text-right">Events</div>
+          <div className="hidden sm:block sm:col-span-1 text-right">Users</div>
           <div className="col-span-2 text-right">Last Seen</div>
         </div>
 
@@ -193,12 +193,12 @@ export const IssueTable: React.FC<IssueTableProps> = ({
                 <div
                   key={issue.id}
                   onClick={() => onSelectIssue(issue)}
-                  className={`grid grid-cols-12 gap-4 px-4 py-3.5 items-center cursor-pointer hover:bg-slate-800/30 transition-colors group ${
+                  className={`grid grid-cols-12 gap-3 px-4 py-3.5 items-center cursor-pointer hover:bg-slate-800/30 transition-colors group ${
                     isSelected ? 'bg-emerald-500/5' : ''
                   }`}
                 >
                   {/* Issue & Culprit */}
-                  <div className="col-span-6 flex items-start gap-3 overflow-hidden">
+                  <div className="col-span-8 md:col-span-6 flex items-start gap-3 overflow-hidden">
                     <input
                       type="checkbox"
                       checked={isSelected}
@@ -232,17 +232,17 @@ export const IssueTable: React.FC<IssueTableProps> = ({
                   </div>
 
                   {/* 24h Sparkline */}
-                  <div className="col-span-2">
+                  <div className="hidden md:block md:col-span-2">
                     <Sparkline data={issue.sparkline} />
                   </div>
 
                   {/* Events */}
-                  <div className="col-span-1 text-right font-mono text-xs font-semibold text-slate-200">
+                  <div className="col-span-2 md:col-span-1 text-right font-mono text-xs font-semibold text-slate-200">
                     {issue.event_count.toLocaleString()}
                   </div>
 
                   {/* Impacted Users */}
-                  <div className="col-span-1 text-right font-mono text-xs text-slate-300 flex items-center justify-end gap-1">
+                  <div className="hidden sm:flex sm:col-span-1 text-right font-mono text-xs text-slate-300 items-center justify-end gap-1">
                     <Users className="w-3 h-3 text-sky-400 opacity-60" />
                     {issue.user_count.toLocaleString()}
                   </div>

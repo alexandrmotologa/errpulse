@@ -1,0 +1,174 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <clipPath id="squircle-clip">
+      <rect x="24" y="24" width="976" height="976" rx="220" />
+    </clipPath>
+
+    <linearGradient id="emerald-cyan-pulse" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="50%" stop-color="#00f5ff"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+
+    <linearGradient id="rose-alert" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f43f5e"/>
+      <stop offset="100%" stop-color="#be123c"/>
+    </linearGradient>
+
+    <linearGradient id="armor-light" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#475569"/>
+      <stop offset="100%" stop-color="#334155"/>
+    </linearGradient>
+
+    <linearGradient id="armor-mid" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+
+    <linearGradient id="armor-dark" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#070a11"/>
+    </linearGradient>
+
+    <filter id="subtle-shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#000000" flood-opacity="0.14" />
+    </filter>
+  </defs>
+
+  <!-- Luxury White Squircle Container -->
+  <rect x="24" y="24" width="976" height="976" rx="220" fill="#ffffff" stroke="#e2e8f0" stroke-width="6" />
+
+  <g clip-path="url(#squircle-clip)">
+    <!-- Subtle Background Radar Grids -->
+    <g transform="translate(512, 512)" opacity="0.06">
+      <circle r="360" fill="none" stroke="#0f172a" stroke-width="2" stroke-dasharray="8,8"/>
+      <circle r="260" fill="none" stroke="#0f172a" stroke-width="2"/>
+      <circle r="160" fill="none" stroke="#0f172a" stroke-width="2" stroke-dasharray="6,6"/>
+      <line x1="-380" y1="0" x2="380" y2="0" stroke="#0f172a" stroke-width="1.5"/>
+      <line x1="0" y1="-380" x2="0" y2="380" stroke="#0f172a" stroke-width="1.5"/>
+    </g>
+
+    <g transform="translate(512, 512)" filter="url(#subtle-shadow)">
+      <!-- Hexagonal Architectural Gateway Frame -->
+      <polygon points="
+        0,-380
+        329,-190
+        329,190
+        0,380
+        -329,190
+        -329,-190
+      " fill="none" stroke="#0f172a" stroke-width="36" stroke-linejoin="round" />
+
+      <!-- Inner Telemetry Pulse Hexagon -->
+      <polygon points="
+        0,-346
+        300,-173
+        300,173
+        0,346
+        -300,173
+        -300,-173
+      " fill="none" stroke="url(#emerald-cyan-pulse)" stroke-width="4" opacity="0.5" stroke-dasharray="16, 12" />
+
+      <!-- Watertight Base Silhouette of the Radar Bat -->
+      <path d="
+        M 0 -130
+        L 90 -290
+        L 140 -270
+        L 105 -110
+        L 210 -150
+        L 300 -80
+        L 290 80
+        L 210 200
+        L 130 260
+        L 0 320
+        L -130 260
+        L -210 200
+        L -290 80
+        L -300 -80
+        L -210 -150
+        L -105 -110
+        L -140 -270
+        L -90 -290
+        Z
+      " fill="#070a11" stroke="#070a11" stroke-width="2" stroke-linejoin="round" />
+
+      <!-- Outer Wing Flanges (Low-Poly Armor Facets) -->
+      <!-- Left Wing Facets -->
+      <polygon points="-105,-110 -210,-150 -300,-80 -180,-40" fill="#1e293b" />
+      <polygon points="-300,-80 -290,80 -190,40 -180,-40" fill="#0f172a" />
+      <polygon points="-290,80 -210,200 -140,130 -190,40" fill="#334155" />
+      <polygon points="-210,200 -130,260 -70,180 -140,130" fill="#1e293b" />
+      <polygon points="-130,260 0,320 0,220 -70,180" fill="#0f172a" />
+
+      <!-- Right Wing Facets (Symmetrical) -->
+      <polygon points="105,-110 210,-150 300,-80 180,-40" fill="#334155" />
+      <polygon points="300,-80 290,80 190,40 180,-40" fill="#1e293b" />
+      <polygon points="290,80 210,200 140,130 190,40" fill="#475569" />
+      <polygon points="210,200 130,260 70,180 140,130" fill="#334155" />
+      <polygon points="130,260 0,320 0,220 70,180" fill="#1e293b" />
+
+      <!-- Inner Wing Midrib Accents -->
+      <polygon points="-180,-40 -190,40 -100,20 -90,-50" fill="#1e293b" />
+      <polygon points="180,-40 190,40 100,20 90,-50" fill="#334155" />
+      <polygon points="-190,40 -140,130 -70,180 -70,90 -100,20" fill="#0f172a" />
+      <polygon points="190,40 140,130 70,180 70,90 100,20" fill="#1e293b" />
+
+      <!-- Center Chest & Body Armor Plate -->
+      <polygon points="0,70 -70,90 -70,180 0,220" fill="#0f172a" />
+      <polygon points="0,70 70,90 70,180 0,220" fill="#1e293b" />
+      <polygon points="0,0 -80,20 0,70" fill="#334155" />
+      <polygon points="0,0 80,20 0,70" fill="#475569" />
+
+      <!-- Radar Ears (Antennae for Acoustic Detection) -->
+      <!-- Left Ear -->
+      <polygon points="0,-130 -90,-290 -140,-270 -80,-140" fill="#0f172a" />
+      <polygon points="-90,-290 -80,-140 -40,-130" fill="#1e293b" />
+      <polygon points="-90,-290 -140,-270 -105,-110" fill="#334155" />
+      <!-- Left Inner Ear Sonar Cavity -->
+      <polygon points="-85,-260 -115,-240 -85,-160" fill="url(#emerald-cyan-pulse)" opacity="0.8" />
+
+      <!-- Right Ear -->
+      <polygon points="0,-130 90,-290 140,-270 80,-140" fill="#1e293b" />
+      <polygon points="90,-290 80,-140 40,-130" fill="#334155" />
+      <polygon points="90,-290 140,-270 105,-110" fill="#475569" />
+      <!-- Right Inner Ear Sonar Cavity -->
+      <polygon points="85,-260 115,-240 85,-160" fill="url(#emerald-cyan-pulse)" opacity="0.8" />
+
+      <!-- Cranial Head Facets -->
+      <polygon points="0,-130 -50,-120 -80,-50 0,-70" fill="#1e293b" />
+      <polygon points="0,-130 50,-120 80,-50 0,-70" fill="#334155" />
+      <polygon points="0,-70 -80,-50 -60,0 0,0" fill="#0f172a" />
+      <polygon points="0,-70 80,-50 60,0 0,0" fill="#1e293b" />
+
+      <!-- Central Forehead Echolocation Core (Pulse Node) -->
+      <polygon points="0,-100 -20,-75 0,-50 20,-75" fill="url(#emerald-cyan-pulse)" />
+      <circle cx="0" cy="-75" r="5" fill="#ffffff" />
+
+      <!-- Concentric Sonar Pulse Rings -->
+      <path d="M -45 -100 A 55 55 0 0 1 45 -100" fill="none" stroke="#00f5ff" stroke-width="3" opacity="0.75" />
+      <path d="M -70 -125 A 85 85 0 0 1 70 -125" fill="none" stroke="#10b981" stroke-width="2.5" opacity="0.5" stroke-dasharray="6,4" />
+
+      <!-- Precision Predator Eyes (Alert Almond Optics) -->
+      <!-- Left Eye -->
+      <polygon points="-48,-32 -22,-36 -28,-22 -52,-20" fill="#000000" />
+      <polygon points="-46,-31 -24,-35 -30,-23 -50,-21" fill="url(#emerald-cyan-pulse)" />
+      <!-- Eye Pupil Glow Line -->
+      <line x1="-38" y1="-34" x2="-34" y2="-22" stroke="#ffffff" stroke-width="2" stroke-linecap="round" />
+
+      <!-- Right Eye -->
+      <polygon points="48,-32 22,-36 28,-22 52,-20" fill="#000000" />
+      <polygon points="46,-31 24,-35 30,-23 50,-21" fill="url(#emerald-cyan-pulse)" />
+      <!-- Eye Pupil Glow Line -->
+      <line x1="38" y1="-34" x2="34" y2="-22" stroke="#ffffff" stroke-width="2" stroke-linecap="round" />
+
+      <!-- Muzzle & Acoustical Nose Disc -->
+      <polygon points="0,-15 -20,-5 0,15 20,-5" fill="#1e293b" />
+      <polygon points="0,-10 -10,-4 0,8 10,-4" fill="#0f172a" />
+      <polygon points="0,-3 -4,-1 0,3 4,-1" fill="url(#rose-alert)" />
+
+      <!-- Chest Telemetry Line (Pulse Waveform) -->
+      <polyline points="-35,130 -15,130 -8,110 0,155 8,105 15,130 35,130"
+        fill="none" stroke="url(#emerald-cyan-pulse)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+  </g>
+</svg>

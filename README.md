@@ -1,8 +1,50 @@
-# ErrPulse
+<p align="center">
+  <img src="docs/images/logo.png?raw=true" alt="ErrPulse Logo" width="130" style="border-radius: 24px;" />
+</p>
 
-Single-binary Sentry-compatible error and exception tracking daemon with embedded SQLite storage and a React 19 incident management studio.
+<h1 align="center">ErrPulse</h1>
+
+<p align="center">
+  <strong>Drop-in Sentry-compatible crash monitoring daemon under 30MB RAM.</strong><br>
+  Go 1.23 | SQLite WAL | VLQ Source Maps | React 19 Studio | Multi-Channel Alerts
+</p>
+
+<p align="center">
+  <a href="#key-features">Features</a> &bull;
+  <a href="#interactive-demo">Demo</a> &bull;
+  <a href="#quickstart">Quickstart</a> &bull;
+  <a href="#client-sdk-integration">SDK Setup</a> &bull;
+  <a href="#source-maps--de-minification">Source Maps</a> &bull;
+  <a href="#architecture-overview">Architecture</a>
+</p>
+
+---
 
 ErrPulse accepts crash reports directly from standard Sentry SDKs (`@sentry/browser`, `@sentry/node`, `sentry-sdk`, `sentry-go`) over the official Sentry envelope ingestion protocol. It de-minifies production stack traces using Base64 VLQ source maps, groups duplicate exceptions using deterministic SHA-256 fingerprinting, stores events in SQLite WAL mode with a memory footprint under 30MB RAM, and dispatches alerts to Slack, Discord, and Telegram.
+
+---
+
+## Interactive Demo
+
+![ErrPulse Live Studio Demo](docs/images/errpulse_demo.gif?raw=true)
+
+---
+
+## Incident Studio Interface
+
+### Real-Time Incident Triage & Sparkline Activity
+![ErrPulse Dashboard](docs/images/errpulse_dashboard.png?raw=true)
+
+### De-minified Stack Traces & Occurrence Inspector
+![ErrPulse Issue Details](docs/images/errpulse_issue_detail.png?raw=true)
+
+### Release Health & Crash-Free Percentages
+![ErrPulse Releases](docs/images/errpulse_releases.png?raw=true)
+
+### Responsive Mobile Interface
+<p align="center">
+  <img src="docs/images/errpulse_mobile.png?raw=true" alt="ErrPulse Mobile Interface" width="390" />
+</p>
 
 ---
 
