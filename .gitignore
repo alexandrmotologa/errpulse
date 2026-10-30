@@ -1,8 +1,8 @@
 # Binaries
 bin/
-dist/
-errpulse
-errpulse.exe
+/dist/
+/errpulse
+/errpulse.exe
 *.exe
 
 # Database files
@@ -19,8 +19,8 @@ node_modules/
 .npm/
 
 # Web build artifacts
-web/dist/
 web/.vite/
+!web/dist/
 
 # OS and IDE files
 .DS_Store
