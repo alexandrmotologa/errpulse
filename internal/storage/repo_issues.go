@@ -126,10 +126,11 @@ func (db *DB) GetIssue(id int64) (*Issue, error) {
 	return &issue, nil
 }
 
-// ListIssues queries issues with filtering and pagination.
+// ListIssues queries issues with syntax DSL filtering and pagination.
 func (db *DB) ListIssues(
 	projectID int64,
 	status IssueStatus,
+	environment string,
 	search string,
 	limit, offset int,
 ) ([]Issue, int64, error) {
@@ -144,19 +145,53 @@ func (db *DB) ListIssues(
 	var args []interface{}
 
 	if projectID > 0 {
-		conditions = append(conditions, "project_id = ?")
+		conditions = append(conditions, "issues.project_id = ?")
 		args = append(args, projectID)
 	}
 
+	// Parse search tokens if present: is:unresolved, env:prod, release:v1, type:TypeError
+	var freeTextWords []string
+	if search != "" {
+		tokens := strings.Fields(search)
+		for _, token := range tokens {
+			lower := strings.ToLower(token)
+			if strings.HasPrefix(lower, "is:") {
+				val := strings.TrimPrefix(lower, "is:")
+				if val == "unresolved" || val == "resolved" || val == "ignored" {
+					status = IssueStatus(val)
+				}
+			} else if strings.HasPrefix(lower, "env:") {
+				environment = strings.TrimPrefix(token, "env:")
+			} else if strings.HasPrefix(lower, "release:") {
+				relVal := strings.TrimPrefix(token, "release:")
+				conditions = append(conditions, "issues.last_release LIKE ?")
+				args = append(args, "%"+relVal+"%")
+			} else if strings.HasPrefix(lower, "type:") {
+				typeVal := strings.TrimPrefix(token, "type:")
+				conditions = append(conditions, "issues.type LIKE ?")
+				args = append(args, "%"+typeVal+"%")
+			} else {
+				freeTextWords = append(freeTextWords, token)
+			}
+		}
+	}
+
 	if status != "" && status != "all" {
-		conditions = append(conditions, "status = ?")
+		conditions = append(conditions, "issues.status = ?")
 		args = append(args, string(status))
 	}
 
-	if search != "" {
-		searchPattern := "%" + search + "%"
-		conditions = append(conditions, "(title LIKE ? OR culprit LIKE ? OR fingerprint LIKE ?)")
-		args = append(args, searchPattern, searchPattern, searchPattern)
+	joinClause := ""
+	if environment != "" && environment != "all" {
+		joinClause = "JOIN events ON issues.id = events.issue_id"
+		conditions = append(conditions, "events.environment = ?")
+		args = append(args, environment)
+	}
+
+	if len(freeTextWords) > 0 {
+		freeText := "%" + strings.Join(freeTextWords, " ") + "%"
+		conditions = append(conditions, "(issues.title LIKE ? OR issues.culprit LIKE ? OR issues.fingerprint LIKE ?)")
+		args = append(args, freeText, freeText, freeText)
 	}
 
 	whereClause := ""
@@ -165,19 +200,21 @@ func (db *DB) ListIssues(
 	}
 
 	var totalCount int64
-	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM issues %s", whereClause)
+	countQuery := fmt.Sprintf("SELECT COUNT(DISTINCT issues.id) FROM issues %s %s", joinClause, whereClause)
 	if err := db.QueryRow(countQuery, args...).Scan(&totalCount); err != nil {
 		return nil, 0, fmt.Errorf("failed counting issues: %w", err)
 	}
 
 	selectQuery := fmt.Sprintf(`
-		SELECT id, project_id, fingerprint, title, culprit, type, status,
-		       first_seen_at, last_seen_at, event_count, user_count, COALESCE(last_release, '')
+		SELECT DISTINCT issues.id, issues.project_id, issues.fingerprint, issues.title,
+		       issues.culprit, issues.type, issues.status,
+		       issues.first_seen_at, issues.last_seen_at, issues.event_count, issues.user_count, COALESCE(issues.last_release, '')
 		FROM issues
 		%s
-		ORDER BY last_seen_at DESC
+		%s
+		ORDER BY issues.last_seen_at DESC
 		LIMIT ? OFFSET ?
-	`, whereClause)
+	`, joinClause, whereClause)
 
 	queryArgs := append(args, limit, offset)
 	rows, err := db.Query(selectQuery, queryArgs...)

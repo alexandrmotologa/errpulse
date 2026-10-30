@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ReleaseArtifact } from '../types';
+import { ReleaseArtifact, ReleaseHealth } from '../types';
 import {
   UploadCloud,
   FileCode,
@@ -7,6 +7,8 @@ import {
   Trash2,
   Package,
   Terminal,
+  ShieldCheck,
+  Users,
 } from 'lucide-react';
 
 interface ReleaseManagerProps {
@@ -16,6 +18,7 @@ interface ReleaseManagerProps {
 export const ReleaseManager: React.FC<ReleaseManagerProps> = ({ projectId }) => {
   const [releases, setReleases] = useState<string[]>([]);
   const [selectedRelease, setSelectedRelease] = useState<string>('');
+  const [healthMap, setHealthMap] = useState<Record<string, ReleaseHealth>>({});
   const [artifacts, setArtifacts] = useState<ReleaseArtifact[]>([]);
   const [newReleaseTag, setNewReleaseTag] = useState('');
   const [uploading, setUploading] = useState(false);
@@ -30,6 +33,15 @@ export const ReleaseManager: React.FC<ReleaseManagerProps> = ({ projectId }) => 
         if (!selectedRelease && data && data.length > 0) {
           setSelectedRelease(data[0]);
         }
+      }
+      const healthRes = await fetch(`/api/v1/releases/health?project_id=${projectId}`);
+      if (healthRes.ok) {
+        const hList: ReleaseHealth[] = await healthRes.json();
+        const map: Record<string, ReleaseHealth> = {};
+        hList.forEach((h) => {
+          map[h.release] = h;
+        });
+        setHealthMap(map);
       }
     } catch {
       // Ignore
@@ -147,12 +159,50 @@ export const ReleaseManager: React.FC<ReleaseManagerProps> = ({ projectId }) => 
               placeholder="Or new tag (e.g. webapp@1.0.0)"
               value={newReleaseTag}
               onChange={(e) => setNewReleaseTag(e.target.value)}
-              className="px-3 py-1.5 text-xs font-mono bg-[#121622] border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-emerald-500 placeholder-slate-500"
-            >
-            </input>
+              className="px-3 py-1.5 text-xs font-mono bg-[#121622] border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-emerald-500 placeholder-slate-600"
+            />
           </div>
         </div>
       </div>
+
+      {/* Selected Release Health Badges */}
+      {selectedRelease && healthMap[selectedRelease] && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 rounded-xl bg-[#0a0c13] border border-slate-800 font-mono text-xs">
+          <div className="space-y-1">
+            <span className="text-slate-500 text-[10px] uppercase font-bold flex items-center gap-1">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              Crash-Free Sessions
+            </span>
+            <div className="text-base font-bold text-emerald-400">
+              {healthMap[selectedRelease].crash_free_sessions_rate}%
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <span className="text-slate-500 text-[10px] uppercase font-bold flex items-center gap-1">
+              <Users className="w-3.5 h-3.5 text-sky-400" />
+              Crash-Free Users
+            </span>
+            <div className="text-base font-bold text-sky-400">
+              {healthMap[selectedRelease].crash_free_users_rate}%
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <span className="text-slate-500 text-[10px] uppercase font-bold">Total Sessions</span>
+            <div className="text-base font-bold text-slate-200">
+              {healthMap[selectedRelease].total_sessions.toLocaleString()}
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <span className="text-slate-500 text-[10px] uppercase font-bold">Crashed Sessions</span>
+            <div className="text-base font-bold text-rose-400">
+              {healthMap[selectedRelease].crashed_sessions.toLocaleString()}
+            </div>
+          </div>
+        </div>
+      )}
 
       {statusMsg && (
         <div

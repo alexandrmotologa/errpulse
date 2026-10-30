@@ -16,6 +16,8 @@ func SendSlackNotification(webhookURL, baseURL, reason string, issue *storage.Is
 	badge := "[NEW ISSUE]"
 	if reason == "REGRESSION" {
 		badge = "[REGRESSION]"
+	} else if reason == "SPIKE_DETECTED" {
+		badge = "[CRITICAL SPIKE ALERT]"
 	}
 
 	payload := map[string]interface{}{

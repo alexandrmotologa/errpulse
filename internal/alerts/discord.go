@@ -15,6 +15,9 @@ func SendDiscordNotification(webhookURL, baseURL, reason string, issue *storage.
 	if reason == "REGRESSION" {
 		color = 0xf59e0b // Amber for regression
 		statusText = "Issue Regression Detected"
+	} else if reason == "SPIKE_DETECTED" {
+		color = 0x991b1b // Deep crimson
+		statusText = "Abnormal Crash Spike Detected (>20/min)"
 	}
 
 	payload := map[string]interface{}{

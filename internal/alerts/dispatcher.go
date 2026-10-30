@@ -20,23 +20,25 @@ type AlertJob struct {
 
 // Dispatcher processes and routes alert jobs asynchronously.
 type Dispatcher struct {
-	db      *storage.DB
-	queue   chan AlertJob
-	wg      sync.WaitGroup
-	ctx     context.Context
-	cancel  context.CancelFunc
-	baseURL string
+	db        *storage.DB
+	queue     chan AlertJob
+	wg        sync.WaitGroup
+	ctx       context.Context
+	cancel    context.CancelFunc
+	baseURL   string
+	throttler *Throttler
 }
 
 // NewDispatcher creates a new alert dispatcher with background workers.
 func NewDispatcher(db *storage.DB, baseURL string) *Dispatcher {
 	ctx, cancel := context.WithCancel(context.Background())
 	d := &Dispatcher{
-		db:      db,
-		queue:   make(chan AlertJob, 100),
-		ctx:     ctx,
-		cancel:  cancel,
-		baseURL: strings.TrimRight(baseURL, "/"),
+		db:        db,
+		queue:     make(chan AlertJob, 100),
+		ctx:       ctx,
+		cancel:    cancel,
+		baseURL:   strings.TrimRight(baseURL, "/"),
+		throttler: NewThrottler(5*time.Minute, 20),
 	}
 
 	// Start worker pool
@@ -86,10 +88,17 @@ func (d *Dispatcher) processJob(job AlertJob) {
 			continue
 		}
 
+		allowed, effectiveReason := d.throttler.ShouldSend(job.Issue.ID, cfg.Channel, job.Reason)
+		if !allowed {
+			continue
+		}
+
 		shouldSend := false
-		if job.Reason == "NEW_ISSUE" && cfg.NotifyOnNew {
+		if effectiveReason == "NEW_ISSUE" && cfg.NotifyOnNew {
 			shouldSend = true
-		} else if job.Reason == "REGRESSION" && cfg.NotifyOnRegression {
+		} else if effectiveReason == "REGRESSION" && cfg.NotifyOnRegression {
+			shouldSend = true
+		} else if effectiveReason == "SPIKE_DETECTED" {
 			shouldSend = true
 		}
 
@@ -97,8 +106,8 @@ func (d *Dispatcher) processJob(job AlertJob) {
 			continue
 		}
 
-		go func(c storage.AlertConfig) {
-			err := d.sendToChannel(c.Channel, c.TargetURL, job.BaseURL, job.Reason, job.Issue)
+		go func(c storage.AlertConfig, reason string) {
+			err := d.sendToChannel(c.Channel, c.TargetURL, job.BaseURL, reason, job.Issue)
 			status := "success"
 			respMsg := "OK"
 			if err != nil {
@@ -107,7 +116,7 @@ func (d *Dispatcher) processJob(job AlertJob) {
 				log.Printf("[ErrPulse] Failed sending alert to %s (%s): %v", c.Channel, c.TargetURL, err)
 			}
 			_ = d.db.LogAlert(job.ProjectID, job.Issue.ID, c.Channel, status, respMsg)
-		}(cfg)
+		}(cfg, effectiveReason)
 	}
 }
 

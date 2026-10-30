@@ -7,6 +7,7 @@ import { ReleaseManager } from './components/ReleaseManager';
 import { AlertSettings } from './components/AlertSettings';
 import { DsnHelper } from './components/DsnHelper';
 import { EventSimulator } from './components/EventSimulator';
+import { playNewIssueChime, playRegressionChime } from './utils/sound';
 import {
   Activity,
   Flame,
@@ -18,12 +19,19 @@ import {
   Layers,
   Database,
   Cpu,
+  Volume2,
+  VolumeX,
+  Globe2,
 } from 'lucide-react';
 
 export function App() {
   const [activeTab, setActiveTab] = useState<'issues' | 'releases' | 'alerts' | 'dsn' | 'simulator'>('issues');
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<number>(1);
+  const [selectedEnvironment, setSelectedEnvironment] = useState<string>('all');
+  const [audioEnabled, setAudioEnabled] = useState<boolean>(() => {
+    return localStorage.getItem('errpulse_sound') !== 'false';
+  });
   const [stats, setStats] = useState<StatsSummary | null>(null);
 
   // Issues state
@@ -32,6 +40,14 @@ export function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
   const [latestEvent, setLatestEvent] = useState<EventDetail | null>(null);
+
+  const toggleSound = () => {
+    setAudioEnabled((prev) => {
+      const next = !prev;
+      localStorage.setItem('errpulse_sound', String(next));
+      return next;
+    });
+  };
 
   // Fetch projects
   const fetchProjects = async () => {
@@ -65,6 +81,7 @@ export function App() {
       const params = new URLSearchParams({
         project_id: selectedProjectId.toString(),
         status: currentStatus,
+        environment: selectedEnvironment !== 'all' ? selectedEnvironment : '',
         search: searchQuery,
       });
       const res = await fetch(`/api/v1/issues?${params.toString()}`);
@@ -75,7 +92,7 @@ export function App() {
     } catch {
       // Ignore
     }
-  }, [selectedProjectId, currentStatus, searchQuery]);
+  }, [selectedProjectId, currentStatus, selectedEnvironment, searchQuery]);
 
   // Select issue details
   const handleSelectIssue = async (issue: Issue) => {
@@ -92,10 +109,18 @@ export function App() {
   };
 
   // Handle live events via SSE
-  const handleLiveEvent = useCallback(() => {
+  const handleLiveEvent = useCallback((eventData?: any) => {
     fetchIssues();
     fetchStats();
-  }, [fetchIssues, fetchStats]);
+
+    if (audioEnabled) {
+      if (eventData?.is_regression) {
+        playRegressionChime();
+      } else if (eventData?.is_new) {
+        playNewIssueChime();
+      }
+    }
+  }, [fetchIssues, fetchStats, audioEnabled]);
 
   const { connected } = useErrPulseStream(selectedProjectId, handleLiveEvent);
 
@@ -177,10 +202,48 @@ export function App() {
                 </select>
               </div>
             )}
+
+            {/* Environment Filter */}
+            <div className="flex items-center gap-1.5 pl-3 border-l border-slate-800">
+              <Globe2 className="w-3.5 h-3.5 text-slate-500" />
+              <select
+                value={selectedEnvironment}
+                onChange={(e) => setSelectedEnvironment(e.target.value)}
+                className="bg-transparent text-xs font-semibold text-slate-400 focus:text-slate-200 focus:outline-none cursor-pointer"
+              >
+                <option value="all" className="bg-[#121622] text-slate-200">All Environments</option>
+                <option value="production" className="bg-[#121622] text-slate-200">Production</option>
+                <option value="staging" className="bg-[#121622] text-slate-200">Staging</option>
+                <option value="development" className="bg-[#121622] text-slate-200">Development</option>
+              </select>
+            </div>
           </div>
 
           {/* Right controls */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            {/* Audio notifications toggle */}
+            <button
+              onClick={toggleSound}
+              title={audioEnabled ? 'Mute audio chimes' : 'Unmute audio chimes'}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
+            >
+              {audioEnabled ? (
+                <Volume2 className="w-4 h-4 text-emerald-400" />
+              ) : (
+                <VolumeX className="w-4 h-4 text-slate-500" />
+              )}
+            </button>
+
+            {/* Prometheus Metrics Link */}
+            <a
+              href="/metrics"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[11px] font-mono text-slate-400 hover:text-emerald-400 transition-colors hidden sm:inline"
+            >
+              /metrics
+            </a>
+
             {/* Live SSE Indicator */}
             <div
               className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono border transition-colors ${
@@ -333,7 +396,7 @@ export function App() {
         )}
 
         {activeTab === 'simulator' && (
-          <EventSimulator onSimulated={handleLiveEvent} />
+          <EventSimulator onSimulated={() => handleLiveEvent()} />
         )}
       </main>
 

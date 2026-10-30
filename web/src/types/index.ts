@@ -99,3 +99,13 @@ export interface ReleaseArtifact {
   size?: number;
   created_at: string;
 }
+
+export interface ReleaseHealth {
+  release: string;
+  total_sessions: number;
+  crashed_sessions: number;
+  crash_free_sessions_rate: number;
+  total_users: number;
+  crashed_users: number;
+  crash_free_users_rate: number;
+}

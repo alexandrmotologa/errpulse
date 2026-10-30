@@ -73,6 +73,7 @@ errpulse/
 │   │   ├── discord.go            # Discord webhook embed formatter
 │   │   ├── slack.go              # Slack Block Kit JSON builder
 │   │   ├── telegram.go           # Telegram HTML/Markdown bot broadcaster
+│   │   ├── throttle.go           # Alert rate-limiter and spike protection
 │   │   └── webhook.go            # Generic HTTP JSON webhook sender
 │   ├── grouping/
 │   │   ├── cleaner.go            # In-app frame classifier (filters vendor paths)
@@ -82,9 +83,13 @@ errpulse/
 │   │   ├── auth.go               # DSN and X-Sentry-Auth header parser
 │   │   ├── envelope.go           # Multi-part Sentry envelope stream parser
 │   │   ├── handler.go            # Ingestion HTTP endpoints (/envelope, /store)
+│   │   ├── sanitizer.go          # PII and credential data scrubber
 │   │   └── model.go              # Event, Exception, Frame, Breadcrumb schemas
+│   ├── models/
+│   │   └── sentry.go             # Protocol type definitions (decoupled)
 │   ├── server/
 │   │   ├── api.go                # REST API for issues, projects, and alerts
+│   │   ├── metrics.go            # Prometheus exposition endpoint (/metrics)
 │   │   ├── sentry_cli_compat.go  # Sentry CLI release file upload compatibility
 │   │   ├── sse.go                # Server-Sent Events real-time stream hub
 │   │   └── static.go             # Embedded React 19 UI handler (embed.FS)
@@ -96,9 +101,11 @@ errpulse/
 │       ├── migrations.go         # SQLite schema initialization
 │       ├── pruner.go             # Background data retention cleaner
 │       ├── repo_alerts.go        # Notification settings repository
-│       ├── repo_events.go        # Raw event storage and search
-│       ├── repo_issues.go        # Issue aggregation, state, and stats
+│       ├── repo_artifacts.go     # Release artifact and .map storage
+│       ├── repo_events.go        # Raw event storage and occurrence retrieval
+│       ├── repo_issues.go        # Issue aggregation, search DSL, and stats
 │       ├── repo_projects.go      # Project credentials and DSN management
+│       ├── repo_sessions.go      # Session tracking and Crash-Free Rate calculations
 │       └── sqlite.go             # SQLite connection pool with WAL pragma
 ├── web/
 │   ├── index.html
@@ -116,14 +123,16 @@ errpulse/
 │       │   ├── BreadcrumbView.tsx    # Chronological pre-crash user trail
 │       │   ├── DsnHelper.tsx         # Copy-paste setup snippets for SDKs
 │       │   ├── EventSimulator.tsx    # One-click synthetic error injector
-│       │   ├── IssueDetails.tsx      # Full issue inspection modal/view
+│       │   ├── IssueDetails.tsx      # Full issue inspection and occurrence navigation
 │       │   ├── IssueTable.tsx        # Filterable issue list with sparklines
-│       │   ├── ReleaseManager.tsx    # Drag-and-drop source map uploader
+│       │   ├── ReleaseManager.tsx    # Source map manager and release health cards
 │       │   ├── Sparkline.tsx         # SVG 24-hour activity sparkline
 │       │   └── StackTraceViewer.tsx  # Interactive de-minified source viewer
 │       ├── hooks/
 │       │   ├── useErrPulseStream.ts  # SSE real-time connection hook
 │       │   └── useIssues.ts          # Issue querying and mutation state
+│       ├── utils/
+│       │   └── sound.ts              # Web Audio API tactile incident chimes
 │       └── types/
 │           └── index.ts              # TypeScript domain interfaces
 ├── docs/
@@ -225,8 +234,44 @@ errpulse/
 
 ## 4. Architectural Enhancements Included
 
-1. Real-Time SSE Stream: Live updates push directly to the browser when new errors arrive without manual refresh.
-2. Sentry CLI Compatibility: Standard CI/CD release workflows (`sentry-cli releases files upload-sourcemaps`) work directly with ErrPulse.
-3. Embedded Sources Support: Source maps with embedded `sourcesContent` render original source code without requiring local file access.
-4. Automatic Data Retention Pruner: Daily background routine deletes raw events older than the configured threshold, keeping SQLite compact.
-5. In-Studio Error Simulator: Allows immediate testing of the full pipeline (envelope intake, stack trace decoding, and alerting) from the web UI.
+1. **PII and Sensitive Data Sanitizer (`internal/ingest/sanitizer.go`)**:
+   - Automated redaction of passwords, tokens, API keys, JWTs, credit card numbers, and authorization headers from event payloads and extra context before SQLite writes.
+
+2. **Session and Release Health Tracking (`internal/storage/repo_sessions.go`)**:
+   - Ingests Sentry session envelope items (`{"type": "session"}`) and tracks session runs, crashes, and unique users per release.
+   - Computes real-time Crash-Free Session Rate % and Crash-Free User Rate % exposed via `GET /api/v1/releases/health`.
+
+3. **Search Syntax DSL and Multi-Environment Triage (`internal/storage/repo_issues.go`)**:
+   - Parses search tokens: `is:unresolved`, `is:resolved`, `is:ignored`, `env:<name>`, `release:<tag>`, `type:<error_type>`, plus free-text matching.
+   - Front-end dropdown filter for multi-environment isolation (`all`, `production`, `staging`, `development`).
+
+4. **Historical Occurrence Browser (`internal/storage/repo_events.go`)**:
+   - Allows users to step through every occurrence of an issue (`Event 1 of 42`) with previous/next controls, surfacing temporal shifts in breadcrumbs, user accounts, and request headers.
+
+5. **1-Click GitHub Issue Creator (`web/src/components/IssueDetails.tsx`)**:
+   - Generates pre-populated markdown bug reports containing issue titles, culprit files, system tags, and formatted stack traces with a single click.
+
+6. **Alert Throttling and Crash Spike Protection (`internal/alerts/throttle.go`)**:
+   - Rate-limits incident notifications to prevent alert storms (configurable cooldown window).
+   - Flags abnormal crash frequency spikes (>20 events per minute) with critical priority banners.
+
+7. **Prometheus Metrics Exposition (`internal/server/metrics.go`)**:
+   - Built-in `/metrics` endpoint exporting ingestion counters, active issue counts, database storage size in bytes, and uptime gauges.
+
+8. **Tactile Web Audio Alerts (`web/src/utils/sound.ts`)**:
+   - Optional procedural audio chimes synthesized directly in the browser via the Web Audio API for incoming crashes and regressions without external media files.
+
+9. **Real-Time SSE Stream (`internal/server/sse.go`)**:
+   - Live updates push directly to the browser when new errors arrive without manual refresh.
+
+10. **Sentry CLI Compatibility (`internal/server/sentry_cli_compat.go`)**:
+    - Standard CI/CD release workflows (`sentry-cli releases files upload-sourcemaps`) work directly with ErrPulse.
+
+11. **Embedded Sources Support (`internal/sourcemap/vlq.go`)**:
+    - Source maps with embedded `sourcesContent` render original source code without requiring local file access.
+
+12. **Automatic Data Retention Pruner (`internal/storage/pruner.go`)**:
+    - Daily background routine deletes raw events older than the configured threshold, keeping SQLite compact.
+
+13. **In-Studio Error Simulator (`internal/server/api.go`)**:
+    - Allows immediate testing of the full pipeline (envelope intake, stack trace decoding, and alerting) from the web UI.

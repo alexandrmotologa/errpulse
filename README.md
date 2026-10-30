@@ -9,9 +9,17 @@ ErrPulse accepts crash reports directly from standard Sentry SDKs (`@sentry/brow
 ## Key Features
 
 - **Drop-in Sentry Protocol Compatibility**: Implements `/api/{project_id}/envelope/`, `/api/{project_id}/store/`, and `/api/{project_id}/security/`. Point any existing Sentry SDK to your ErrPulse instance by changing only the DSN.
-- **Sub-30MB RAM Footprint**: Runs as a single compiled Go binary. Uses SQLite in write-ahead log (WAL) mode with tuned cache sizes, running comfortably on entry-level virtual machines.
+- **Sub-30MB RAM Footprint**: Runs as a single compiled Go binary. Uses SQLite in write-ahead log (WAL) mode with tuned cache sizes, running comfortably on entry-level virtual machines (under 17MB baseline).
 - **Pure Go VLQ Source Map Decoder**: Translates minified stack frames (`bundle.min.js:1:3402`) back into original TypeScript or JavaScript files with line numbers and five lines of surrounding source context from embedded `sourcesContent`.
 - **Deterministic Fingerprinting**: Strips dynamic tokens (hex memory addresses, UUIDs, timestamps) and excludes third-party vendor frames (`node_modules`, standard library wrappers) to group related crashes into unified issues.
+- **PII and Sensitive Data Sanitizer**: Automatically redacts passwords, bearer tokens, API keys, JSON Web Tokens (JWTs), credit card numbers, and authorization headers from event payloads, tags, extra contexts, and request bodies before persistence.
+- **Release and Session Health Tracking**: Tracks user sessions and computes real-time Crash-Free Session Rate and Crash-Free User Rate percentages across application versions.
+- **Search Syntax DSL and Multi-Environment Triage**: Supports filter queries like `is:unresolved`, `is:resolved`, `env:production`, `release:webapp@1.4.2`, and `type:TypeError`, alongside free-text searching across titles, culprits, and fingerprints.
+- **Occurrence Browser**: Navigate through historical occurrences of an issue (`Event 1 of 42`) with previous and next pagination to inspect differences in user parameters, headers, or breadcrumbs across separate crash events.
+- **1-Click GitHub Issue Creator**: Generates pre-populated markdown bug reports containing issue titles, culprit files, system tags, and formatted stack traces with a single click.
+- **Alert Throttling and Spike Protection**: Rate-limits incident notifications to prevent alert storms (configurable cooldown window) and flags abnormal crash frequency spikes (>20 events per minute) with critical priority banners.
+- **Prometheus Metrics Exposition**: Built-in `/metrics` endpoint exporting ingestion counters, active issue counts, database storage size in bytes, and uptime gauges.
+- **Tactile Web Audio Alerts**: Optional procedural audio chimes synthesized directly in the browser via the Web Audio API for incoming crashes and regressions without external media files.
 - **Regression Detection**: Flags issues when an error marked as resolved reappears in an incoming release.
 - **Multi-Channel Alert Dispatcher**: Sends notifications with stack previews to Slack Block Kit, Discord Embeds, Telegram bots, or custom HTTP webhooks.
 - **Real-Time Web Studio**: Embedded React 19 single page application served directly from the Go binary on port 9988, featuring real-time Server-Sent Events (SSE), breadcrumbs timelines, and release artifact management.
@@ -136,6 +144,71 @@ export SENTRY_PROJECT=1
 sentry-cli releases new webapp@1.0.0
 sentry-cli releases files webapp@1.0.0 upload-sourcemaps ./dist --url-prefix "~/"
 sentry-cli releases finalize webapp@1.0.0
+```
+
+---
+
+## Search Syntax DSL
+
+The incident search bar supports structured filter tokens alongside general free-text terms:
+
+- `is:unresolved`, `is:resolved`, `is:ignored`: Filter by issue lifecycle state.
+- `env:production`, `env:staging`, `env:development`: Filter crashes by target environment.
+- `release:webapp@1.4.2`: Filter issues occurring in specific releases.
+- `type:TypeError`, `type:runtime.panic`: Filter by exception class name.
+- Plain text: Searches across issue titles, culprit files, and fingerprints.
+
+Example query:
+```
+is:unresolved env:production type:TypeError checkout
+```
+
+---
+
+## Release Health and Crash-Free Rates
+
+ErrPulse monitors incoming session payloads and computes two reliability metrics per release version:
+
+1. **Crash-Free Session Rate**:
+   $$\text{Crash-Free Sessions } \% = \frac{\text{Total Sessions} - \text{Crashed Sessions}}{\text{Total Sessions}} \times 100$$
+2. **Crash-Free User Rate**:
+   $$\text{Crash-Free Users } \% = \frac{\text{Total Impacted Users} - \text{Crashed Users}}{\text{Total Impacted Users}} \times 100$$
+
+When using the standard Sentry SDK, session tracking starts automatically with `autoSessionTracking: true`.
+
+---
+
+## Sensitive Data and PII Sanitizer
+
+Before events are written to the database or broadcast over alerts, ErrPulse runs an automatic redaction pass:
+
+- **Keywords**: Any JSON key matching `password`, `token`, `secret`, `api_key`, `access_token`, `auth`, `cookie`, or `credit_card` has its value replaced with `[REDACTED]`.
+- **JWTs**: JSON Web Tokens matching standard three-part Base64 patterns are masked as `[REDACTED_JWT]`.
+- **Payment Cards**: 13 to 19 digit credit card numbers matching the Luhn format are replaced with `[REDACTED_CREDIT_CARD]`.
+- **Authorization Headers**: HTTP headers such as `Authorization: Bearer <token>` are masked as `Bearer [REDACTED_TOKEN]`.
+
+---
+
+## Prometheus Metrics and Monitoring
+
+ErrPulse exposes operational metrics at `GET /metrics` formatted for Prometheus scrapers:
+
+```prometheus
+# HELP errpulse_uptime_seconds Total runtime of ErrPulse daemon in seconds.
+# TYPE errpulse_uptime_seconds gauge
+errpulse_uptime_seconds 412.50
+
+# HELP errpulse_events_total Total crash events ingested since project inception.
+# TYPE errpulse_events_total counter
+errpulse_events_total 1420
+
+# HELP errpulse_active_issues Total unresolved issues currently open.
+# TYPE errpulse_active_issues gauge
+errpulse_active_issues 8
+
+# HELP errpulse_db_bytes SQLite database file size on disk in bytes.
+# TYPE errpulse_db_bytes gauge
+errpulse_db_bytes 245760
 ```
 
 ---

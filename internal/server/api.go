@@ -165,11 +165,15 @@ func (h *APIHandler) handleIssues(w http.ResponseWriter, r *http.Request, sub []
 		q := r.URL.Query()
 		projectID, _ := strconv.ParseInt(q.Get("project_id"), 10, 64)
 		status := storage.IssueStatus(q.Get("status"))
+		environment := q.Get("environment")
 		search := q.Get("search")
+		if search == "" {
+			search = q.Get("query")
+		}
 		limit, _ := strconv.Atoi(q.Get("limit"))
 		offset, _ := strconv.Atoi(q.Get("offset"))
 
-		issues, total, err := h.db.ListIssues(projectID, status, search, limit, offset)
+		issues, total, err := h.db.ListIssues(projectID, status, environment, search, limit, offset)
 		if err != nil {
 			writeJSONError(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -239,6 +243,28 @@ func (h *APIHandler) handleIssues(w http.ResponseWriter, r *http.Request, sub []
 		}
 	}
 
+	// GET /api/v1/issues/{id}/occurrence/{offset} (or /occurrences/{offset})
+	if len(sub) == 3 && (sub[1] == "occurrence" || sub[1] == "occurrences") && r.Method == http.MethodGet {
+		id, err := strconv.ParseInt(sub[0], 10, 64)
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		offset, _ := strconv.Atoi(sub[2])
+
+		event, err := h.db.GetEventByOccurrence(id, offset)
+		if err != nil || event == nil {
+			http.NotFound(w, r)
+			return
+		}
+
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"event":      event,
+			"occurrence": offset,
+		})
+		return
+	}
+
 	// GET /api/v1/issues/{id}/events
 	if len(sub) == 2 && sub[1] == "events" && r.Method == http.MethodGet {
 		id, err := strconv.ParseInt(sub[0], 10, 64)
@@ -295,6 +321,28 @@ func (h *APIHandler) handleReleases(w http.ResponseWriter, r *http.Request, sub 
 			return
 		}
 		_ = json.NewEncoder(w).Encode(releases)
+		return
+	}
+
+	// GET /api/v1/releases/health
+	if len(sub) == 1 && sub[0] == "health" && r.Method == http.MethodGet {
+		healthList, err := h.db.ListReleasesHealth(projectID)
+		if err != nil {
+			writeJSONError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(healthList)
+		return
+	}
+
+	// GET /api/v1/releases/{release}/health
+	if len(sub) == 2 && sub[1] == "health" && r.Method == http.MethodGet {
+		health, err := h.db.GetReleaseHealth(projectID, sub[0])
+		if err != nil {
+			writeJSONError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(health)
 		return
 	}
 

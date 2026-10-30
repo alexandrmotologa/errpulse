@@ -114,11 +114,11 @@ func cmdServe(args []string) {
 
 	// Seed demo crashes if requested or if database has 0 events
 	if *demo {
-		seedDemoEvents(ingestor)
+		seedDemoEvents(ingestor, db)
 	} else {
 		summary, _ := db.GetStatsSummary(1)
 		if summary != nil && summary.TotalEvents == 0 {
-			seedDemoEvents(ingestor)
+			seedDemoEvents(ingestor, db)
 		}
 	}
 
@@ -164,7 +164,8 @@ func cmdServe(args []string) {
 	// 2. Real-time Server-Sent Events stream
 	mux.Handle("/api/v1/stream", sseHub)
 
-	// 3. Health check endpoint
+	// 3. Health check & Prometheus metrics endpoints
+	mux.Handle("/metrics", server.NewMetricsHandler(db))
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
@@ -227,7 +228,7 @@ func cmdSeedDemo(args []string) {
 	sseHub := server.NewSSEHub()
 	ingestor := ingest.NewIngestHandler(db, resolver, sseHub, nil)
 
-	seedDemoEvents(ingestor)
+	seedDemoEvents(ingestor, db)
 	log.Println("[ErrPulse] Demo events successfully seeded into database.")
 }
 
@@ -239,8 +240,18 @@ func (f *fakeRespWriter) Header() http.Header         { return f.header }
 func (f *fakeRespWriter) Write(b []byte) (int, error) { return len(b), nil }
 func (f *fakeRespWriter) WriteHeader(status int)      {}
 
-func seedDemoEvents(ingestor *ingest.IngestHandler) {
+func seedDemoEvents(ingestor *ingest.IngestHandler, db *storage.DB) {
 	log.Println("[ErrPulse] Seeding realistic sample exceptions across frontend, backend, and workers...")
+
+	// Seed release health sessions
+	_ = db.RecordSession(1, "webapp@1.4.2", true, "ok", "usr_101")
+	_ = db.RecordSession(1, "webapp@1.4.2", true, "ok", "usr_102")
+	_ = db.RecordSession(1, "webapp@1.4.2", true, "crashed", "usr_103")
+	_ = db.RecordSession(1, "webapp@1.4.2", true, "ok", "usr_104")
+	_ = db.RecordSession(1, "webapp@1.4.2", true, "ok", "usr_105")
+	_ = db.RecordSession(1, "checkout-service@1.4.2", true, "ok", "srv_node_1")
+	_ = db.RecordSession(1, "checkout-service@1.4.2", true, "ok", "srv_node_2")
+	_ = db.RecordSession(1, "checkout-service@1.4.2", true, "crashed", "srv_node_3")
 
 	scenarios := []string{
 		"react_type_error",

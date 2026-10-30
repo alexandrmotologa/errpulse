@@ -73,6 +73,24 @@ func (h *IngestHandler) HandleEnvelope(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Process any session health pings in the envelope
+	for _, item := range envelope.Items {
+		if item.Header.Type == "session" {
+			var session struct {
+				Init   bool   `json:"init"`
+				Status string `json:"status"`
+				Attrs  struct {
+					Release     string `json:"release"`
+					Environment string `json:"environment"`
+				} `json:"attrs"`
+				DistinctID string `json:"did"`
+			}
+			if err := json.Unmarshal(item.Payload, &session); err == nil {
+				_ = h.db.RecordSession(projectID, session.Attrs.Release, session.Init, session.Status, session.DistinctID)
+			}
+		}
+	}
+
 	event, err := envelope.ExtractEvent()
 	if err != nil {
 		log.Printf("[ErrPulse] ExtractEvent notice: %v (items count: %d)", err, len(envelope.Items))
@@ -192,6 +210,9 @@ func (h *IngestHandler) processAndPersistEvent(
 	event *SentryEvent,
 	rawPayload string,
 ) {
+	// 0. Scrub sensitive PII, JWTs, and authentication secrets
+	SanitizeEvent(event)
+
 	// 1. Remap stack trace frames using source maps if available
 	if h.resolver != nil && event.Exception != nil {
 		for i := range event.Exception.Values {

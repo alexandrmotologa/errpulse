@@ -196,3 +196,66 @@ ErrPulse provides a live SSE stream at `GET /api/v1/stream?project_id={project_i
 - `event: ping`: Keepalive heartbeat every 15 seconds.
 
 The embedded React 19 interface connects to this stream upon launch, updating issue counters and sparkline charts without browser reloads.
+
+---
+
+## 7. PII Data Sanitization Pipeline
+
+To prevent leaking sensitive database parameters, payment details, or credentials, incoming payloads pass through an automated sanitizer before being written to SQLite or forwarded to alert webhooks.
+
+### 7.1 Key-Based Redaction
+Any key in `tags`, `extra`, `user`, or request body matching known credential names is replaced with `[REDACTED]`:
+- `password`, `token`, `secret`, `api_key`, `access_token`, `auth`, `cookie`, `credit_card`
+
+### 7.2 Pattern-Based Scanning
+String values undergo regular expression checks:
+- **JWT Tokens**: Values matching `eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+` are replaced with `[REDACTED_JWT]`.
+- **Payment Cards**: 13 to 19 digit strings formatted with digits, spaces, or hyphens matching the standard Luhn pattern are replaced with `[REDACTED_CREDIT_CARD]`.
+- **Authorization Headers**: HTTP headers formatted as `Bearer <token>` or `Basic <token>` are masked.
+
+---
+
+## 8. Session Health and Crash-Free Analytics
+
+ErrPulse consumes Sentry session items (`{"type": "session"}`) from client SDK envelopes to track release adoption and reliability over time.
+
+### 8.1 Schema and Rollups
+- `release_sessions`: Stores aggregated totals for `total_sessions`, `crashed_sessions`, `total_users`, and `crashed_users` partitioned by `(project_id, release)`.
+- `session_distinct_users`: Tracks unique user identifiers per release to accurately measure user crash impact without double-counting.
+
+### 8.2 Reliability Formulas
+$$\text{Crash-Free Sessions } \% = \frac{\text{Total Sessions} - \text{Crashed Sessions}}{\text{Total Sessions}} \times 100$$
+$$\text{Crash-Free Users } \% = \frac{\text{Total Users} - \text{Crashed Users}}{\text{Total Users}} \times 100$$
+
+These percentages are computed dynamically and exposed via `GET /api/v1/releases/health`.
+
+---
+
+## 9. Search Syntax DSL Engine
+
+The issue repository parses user queries into structured SQL filtering tokens:
+
+- `is:unresolved`, `is:resolved`, `is:ignored`: Filters the `issues.status` column.
+- `env:<name>`: Joins the `events` table on `events.environment = <name>`.
+- `release:<tag>`: Performs a `LIKE` match on `issues.last_release`.
+- `type:<error_type>`: Matches `issues.type`.
+- Free text: Matches against `issues.title`, `issues.culprit`, or `issues.fingerprint`.
+
+---
+
+## 10. Alert Throttling and Spike Protection
+
+To defend downstream notification channels from being overwhelmed during cascading service outages, ErrPulse includes an in-memory alert throttler:
+
+1. **Cooldown Window**: Each issue maintains a sliding cooldown timer (default: 5 minutes). Duplicate crash events within this window are suppressed.
+2. **Spike Detection**: When an issue receives more than 20 events within a 60-second sliding window, ErrPulse flags the event as an abnormal crash spike and broadcasts a high-priority alert banner `[CRITICAL SPIKE ALERT]`.
+
+---
+
+## 11. Prometheus Metrics Exposition
+
+Operational telemetry is served at `GET /metrics` in standard Prometheus text format:
+- `errpulse_uptime_seconds`: Process lifetime gauge.
+- `errpulse_events_total`: Monotonic counter of all ingested error events.
+- `errpulse_active_issues`: Gauge of open issues requiring triage.
+- `errpulse_db_bytes`: Gauge measuring SQLite database disk footprint.

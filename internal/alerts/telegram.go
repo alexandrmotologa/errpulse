@@ -15,6 +15,8 @@ func SendTelegramNotification(targetURL, baseURL, reason string, issue *storage.
 	statusText := "<b>[NEW ISSUE]</b>"
 	if reason == "REGRESSION" {
 		statusText = "<b>[REGRESSION]</b>"
+	} else if reason == "SPIKE_DETECTED" {
+		statusText = "<b>[CRITICAL SPIKE ALERT]</b>"
 	}
 
 	text := fmt.Sprintf(

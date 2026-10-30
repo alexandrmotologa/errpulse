@@ -96,6 +96,25 @@ CREATE TABLE IF NOT EXISTS alert_logs (
     response TEXT
 );
 
+CREATE TABLE IF NOT EXISTS release_sessions (
+    project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    release TEXT NOT NULL,
+    total_sessions INTEGER NOT NULL DEFAULT 0,
+    crashed_sessions INTEGER NOT NULL DEFAULT 0,
+    total_users INTEGER NOT NULL DEFAULT 0,
+    crashed_users INTEGER NOT NULL DEFAULT 0,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY(project_id, release)
+);
+
+CREATE TABLE IF NOT EXISTS session_distinct_users (
+    project_id INTEGER NOT NULL,
+    release TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    crashed BOOLEAN NOT NULL DEFAULT 0,
+    PRIMARY KEY(project_id, release, user_id)
+);
+
 CREATE INDEX IF NOT EXISTS idx_issues_proj_status ON issues(project_id, status, last_seen_at DESC);
 CREATE INDEX IF NOT EXISTS idx_issues_fingerprint ON issues(project_id, fingerprint);
 CREATE INDEX IF NOT EXISTS idx_events_issue_time ON events(issue_id, timestamp DESC);

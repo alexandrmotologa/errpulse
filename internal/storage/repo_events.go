@@ -60,6 +60,15 @@ func (db *DB) GetEvent(id string) (*Event, error) {
 
 // GetLatestEventForIssue retrieves the most recent event attached to a specific issue.
 func (db *DB) GetLatestEventForIssue(issueID int64) (*Event, error) {
+	return db.GetEventByOccurrence(issueID, 0)
+}
+
+// GetEventByOccurrence retrieves a specific zero-based occurrence (0 = latest, 1 = second latest, etc.).
+func (db *DB) GetEventByOccurrence(issueID int64, offset int) (*Event, error) {
+	if offset < 0 {
+		offset = 0
+	}
+
 	var e Event
 	var timestampStr, createdAtStr string
 	err := db.QueryRow(`
@@ -70,8 +79,8 @@ func (db *DB) GetLatestEventForIssue(issueID int64) (*Event, error) {
 		FROM events
 		WHERE issue_id = ?
 		ORDER BY timestamp DESC
-		LIMIT 1
-	`, issueID).Scan(
+		LIMIT 1 OFFSET ?
+	`, issueID, offset).Scan(
 		&e.ID, &e.IssueID, &e.ProjectID, &timestampStr, &e.Environment, &e.Release,
 		&e.Platform, &e.Message, &e.UserJSON, &e.TagsJSON, &e.ExtraJSON,
 		&e.BreadcrumbsJSON, &e.StacktraceJSON, &e.RawPayload, &createdAtStr,
@@ -80,7 +89,7 @@ func (db *DB) GetLatestEventForIssue(issueID int64) (*Event, error) {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("failed fetching latest event for issue %d: %w", issueID, err)
+		return nil, fmt.Errorf("failed fetching event occurrence %d for issue %d: %w", offset, issueID, err)
 	}
 	e.Timestamp, _ = time.Parse(time.RFC3339, timestampStr)
 	e.CreatedAt, _ = time.Parse(time.RFC3339, createdAtStr)

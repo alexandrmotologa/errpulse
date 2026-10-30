@@ -39,6 +39,9 @@ func setupTestServer(t *testing.T) (*storage.DB, http.Handler) {
 	// Register SSE stream
 	mux.Handle("/api/v1/stream", sseHub)
 
+	// Register Prometheus metrics
+	mux.Handle("/metrics", NewMetricsHandler(db))
+
 	// Register REST API
 	mux.Handle("/api/v1/", apiHandler)
 
@@ -224,5 +227,29 @@ func TestSPAStaticFallback(t *testing.T) {
 	}
 	if !strings.Contains(recDeep.Body.String(), "<div id=\"root\"></div>") {
 		t.Errorf("Expected index.html fallback for client-side routing")
+	}
+}
+
+func TestMetricsEndpoint(t *testing.T) {
+	db, handler := setupTestServer(t)
+	defer db.Close()
+
+	req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("Expected HTTP 200 on /metrics, got %d", rec.Code)
+	}
+
+	body := rec.Body.String()
+	if !strings.Contains(body, "errpulse_uptime_seconds") {
+		t.Errorf("Expected body to contain errpulse_uptime_seconds")
+	}
+	if !strings.Contains(body, "errpulse_events_total") {
+		t.Errorf("Expected body to contain errpulse_events_total")
+	}
+	if !strings.Contains(body, "errpulse_memory_alloc_bytes") {
+		t.Errorf("Expected body to contain errpulse_memory_alloc_bytes")
 	}
 }
